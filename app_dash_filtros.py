@@ -545,20 +545,22 @@ def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_sele
     df_mapa = df_mapa.merge(df_coords_norm, on='Municipio_Norm', how='inner')
     
     if len(df_mapa) > 0:
-        fig2 = px.scatter_mapbox(
+        fig2 = px.scatter_map(
             df_mapa, lat='Latitud', lon='Longitud', color='Subregión',
             size='Total Emergencias', size_max=25, hover_name='Municipio_x',
             hover_data={'Total Emergencias': True, 'Subregión': True, 'Latitud': False, 'Longitud': False},
             color_discrete_sequence=px.colors.qualitative.Set3,
             zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
     else:
-        fig2 = px.scatter_mapbox(
+        fig2 = px.scatter_map(
             pd.DataFrame({'lat': [6.2], 'lon': [-75.5], 'text': ['Sin datos']}),
-            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5}
+            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
     
     # Gráfico 3: LÍNEAS POR MES
     if 'Mes' in df_filtrado.columns and len(df_filtrado) > 0:
@@ -994,11 +996,12 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     if not grupo_seleccionado:
         fig_vacio = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), y='x', x='y')
         fig_vacio.update_layout(height=350, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-        fig_mapa = px.scatter_mapbox(
+        fig_mapa = px.scatter_map(
             pd.DataFrame({'lat': [6.2], 'lon': [-75.5], 'text': ['Sin datos']}),
-            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5}
+            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
         fig_mes = px.line(pd.DataFrame({'Mes': range(1, 13), 'Total': [0]*12}), x='Mes', y='Total')
         fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
         return fig_vacio, fig_mapa, fig_mes, html.Div("Selecciona un grupo"), "0 registros", "✅ Sin filtros", "0", "N/A"
@@ -1007,11 +1010,12 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     if len(df_grupo) == 0:
         fig_vacio = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), y='x', x='y')
         fig_vacio.update_layout(height=350, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-        fig_mapa = px.scatter_mapbox(
+        fig_mapa = px.scatter_map(
             pd.DataFrame({'lat': [6.2], 'lon': [-75.5], 'text': ['Sin datos']}),
-            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5}
+            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
         fig_mes = px.line(pd.DataFrame({'Mes': range(1, 13), 'Total': [0]*12}), x='Mes', y='Total')
         fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
         return fig_vacio, fig_mapa, fig_mes, html.Div("No hay datos"), "0 registros", "✅ Sin filtros", "0", "N/A"
