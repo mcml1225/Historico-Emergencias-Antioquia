@@ -1,0 +1,64 @@
+/* ============================================================================
+ * Tokens del sistema de diseño SAMA
+ * Convertidos desde styles/theme.css (Tailwind v4 @theme) a CSS plano (:root)
+ * ========================================================================== */
+
+:root {
+  /* ── Colores corporativos SAMA ── */
+  --color-primary:        #002040; /* sama-blue */
+  --color-primary-light:  #A8D4EA; /* sama-light-blue */
+  --color-surface:        #ffffff;
+  --color-background:     #eef1f4;
+  --color-muted:          #f8fafc;
+  --color-border:         #e2e8f0;
+
+  /* ── Colores de alerta ── */
+  --color-danger:         #E53E3E; /* red-alert */
+  --color-warning:        #DD6B20; /* orange-alert */
+  --color-caution:        #FFD152; /* sama-yellow */
+  --color-success:        #52be80; /* sama-green */
+  --color-neutral:        #A0AEC0; /* sama-neutral-grey */
+  --color-grey:           #757575; /* sama-grey */
+  --color-grey-light:     #bfbfbf; /* sama-grey-light */
+
+  /* ── Colores de texto ── */
+  --color-text-base:      #002040;
+  --color-text-muted:     #4A5568;
+  --color-text-subtle:    #64748b;
+  --color-text-disabled:  #94a3b8;
+
+  /* ── Tipografía ── */
+  --font-sans:            'Roboto', sans-serif;
+  --font-size-xs:         9px;
+  --font-size-sm:         11px;
+  --font-size-base:       13px;
+  --font-size-md:         14px;
+  --font-size-lg:         15px;
+  --font-size-xl:         16px;
+  --font-size-2xl:        18px;
+  --font-size-3xl:        24px;
+  --font-size-4xl:        38px;
+
+  /* ── Radio de borde ── */
+  --radius-sm:            8px;
+  --radius:               12px;
+  --radius-lg:            20px;
+  --radius-full:          9999px;
+
+  /* ── Sombras / Elevación ── */
+  --shadow-sm:            0 2px 5px rgba(0, 0, 0, 0.05);
+  --shadow-md:            0 8px 30px rgba(0, 0, 0, 0.08);
+  --shadow-lg:            0 12px 40px rgba(0, 0, 0, 0.12);
+
+  /* ── Transiciones ── */
+  --duration-fast:        150ms;
+  --duration-base:        250ms;
+  --duration-slow:        300ms;
+  --ease-default:         cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Animaciones de entrada ── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

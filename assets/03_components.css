@@ -1,0 +1,376 @@
+/* ============================================================================
+ * Componentes del dashboard — sistema de diseño SAMA
+ * Sidebar navy, tarjetas de métricas, panel de filtros, tablas y
+ * overrides de componentes Dash (dropdowns, sliders).
+ * ========================================================================== */
+
+/* ── Layout general ── */
+.main-content {
+  margin-left: 22%;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.page-title {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.page-subtitle {
+  text-align: center;
+  color: var(--color-text-subtle);
+  margin-top: 0;
+}
+
+/* ── Sidebar (navy corporativo) ── */
+.sidebar {
+  width: 20%;
+  float: left;
+  height: 100vh;
+  padding: 20px;
+  background-color: var(--color-primary);
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow-y: auto;
+  box-shadow: var(--shadow-md);
+  color: #ffffff;
+}
+
+.sidebar h2 {
+  text-align: center;
+  color: #ffffff;
+}
+
+.sidebar hr {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Navegación (dcc.RadioItems como enlaces tipo pill) */
+.sidebar-nav label {
+  color: #ffffff;
+  display: block;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  font-size: var(--font-size-xl);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default),
+              color var(--duration-fast) var(--ease-default);
+}
+
+.sidebar-nav label:hover {
+  background-color: rgba(168, 212, 234, 0.15);
+}
+
+.sidebar-nav label:has(input:checked) {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.sidebar-nav input[type="radio"] {
+  accent-color: var(--color-primary-light);
+  margin-right: 8px;
+}
+
+/* Caja informativa al fondo del sidebar */
+.sidebar-info {
+  padding: 12px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+}
+
+.sidebar-info p {
+  margin: 4px 0;
+  font-size: var(--font-size-md);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sidebar-info .sidebar-info-title {
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+/* ── Panel de filtros ── */
+.filters-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px;
+  background-color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+
+.filter-item {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px;
+}
+
+.filter-item-range {
+  flex: 1.4 1 0;
+  padding-top: 22px;
+}
+
+.filter-item > label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.filter-range-text {
+  text-align: center;
+  margin-top: 28px;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-md);
+}
+
+/* ── Tarjetas de métricas ── */
+.metrics-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+  padding: 20px;
+}
+
+.metric-card {
+  flex: 1;
+  text-align: center;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 20px 10px;
+  animation: fadeSlideIn var(--duration-slow) var(--ease-default);
+  transition: box-shadow var(--duration-base) var(--ease-default),
+              transform var(--duration-base) var(--ease-default);
+}
+
+.metric-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.metric-card h3 {
+  margin: 0 0 8px;
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.metric-card h2 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+}
+
+.metric-danger h2  { color: var(--color-danger); }
+.metric-primary h2 { color: var(--color-primary); }
+.metric-success h2 { color: var(--color-success); }
+
+/* ── Texto de filtros activos ── */
+.filtros-activos {
+  font-size: var(--font-size-xl);
+  padding: 10px 14px;
+  color: var(--color-text-muted);
+  background-color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Zona de gráficos y tabla ── */
+.content-row {
+  display: flex;
+  gap: 20px;
+}
+
+.charts-column {
+  width: 70%;
+}
+
+.table-column {
+  width: 30%;
+}
+
+.chart-card,
+.table-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  margin-bottom: 20px;
+  animation: fadeSlideIn var(--duration-slow) var(--ease-default);
+}
+
+.chart-card h4,
+.table-card h4 {
+  margin: 0 0 10px;
+}
+
+.table-scroll {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.table-caption {
+  margin-top: 10px;
+  font-size: var(--font-size-md);
+  color: var(--color-text-subtle);
+}
+
+/* ── Tabla de años ── */
+.sama-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-md);
+}
+
+.sama-table thead th {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  text-align: left;
+  padding: 10px;
+  position: sticky;
+  top: 0;
+}
+
+.sama-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sama-table tbody tr:nth-child(even) {
+  background-color: var(--color-muted);
+}
+
+.sama-table tbody tr:hover {
+  background-color: rgba(168, 212, 234, 0.25);
+}
+
+/* ── Página de amenazas: selector de grupo y estados vacíos ── */
+.grupo-selector {
+  padding: 20px;
+}
+
+.grupo-selector-inner {
+  width: 50%;
+  margin: 0 auto;
+}
+
+.empty-state {
+  text-align: center;
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-subtle);
+  padding: 40px;
+}
+
+.empty-state-danger {
+  color: var(--color-danger);
+}
+
+/* ================================================================
+ * Overrides de componentes Dash
+ * ================================================================ */
+
+/* ── dcc.Dropdown (react-select v1 y Dash 3+/4) ── */
+.Select-control,
+.dash-dropdown .Select-control,
+.dash-dropdown .Select,
+div[class*="Select"] {
+  font-family: var(--font-sans) !important;
+}
+
+.Select-control {
+  border-color: var(--color-border) !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-md) !important;
+  background-color: var(--color-surface) !important;
+}
+
+.Select-control:hover {
+  border-color: var(--color-primary-light) !important;
+}
+
+.is-focused:not(.is-open) > .Select-control {
+  border-color: var(--color-primary-light) !important;
+  box-shadow: 0 0 0 2px rgba(168, 212, 234, 0.4) !important;
+}
+
+.Select-menu-outer {
+  border-color: var(--color-border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-md) !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-md) !important;
+}
+
+.Select-option.is-focused {
+  background-color: rgba(168, 212, 234, 0.3) !important;
+  color: var(--color-primary) !important;
+}
+
+.Select-option.is-selected {
+  background-color: var(--color-primary-light) !important;
+  color: var(--color-primary) !important;
+}
+
+.Select-placeholder,
+.Select-value-label,
+.Select-input {
+  font-family: var(--font-sans) !important;
+  color: var(--color-text-base) !important;
+}
+
+/* ── dcc.RangeSlider (rc-slider) ── */
+.rc-slider-track {
+  background-color: var(--color-primary-light) !important;
+}
+
+.rc-slider-handle {
+  border-color: var(--color-primary) !important;
+}
+
+.rc-slider-handle:hover,
+.rc-slider-handle-dragging.rc-slider-handle-dragging.rc-slider-handle-dragging {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px rgba(168, 212, 234, 0.5) !important;
+}
+
+.rc-slider-dot-active {
+  border-color: var(--color-primary-light) !important;
+}
+
+.rc-slider-mark-text {
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-sm) !important;
+  font-weight: 500 !important;
+  color: var(--color-text-muted) !important;
+  white-space: nowrap !important;
+}
+
+.rc-slider-tooltip {
+  z-index: 5;
+}
+
+.rc-slider-tooltip-inner {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-sm) !important;
+  font-weight: 500 !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+  padding: 3px 8px !important;
+}
+
+.rc-slider-tooltip-arrow {
+  border-top-color: var(--color-primary) !important;
+}
