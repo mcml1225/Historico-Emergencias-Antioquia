@@ -353,8 +353,16 @@ for grupo in df_emergencias['Grupo_Amenaza'].unique():
 # ============================================
 # INICIALIZAR APP
 # ============================================
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(
+    __name__,
+    suppress_callback_exceptions=True,
+    assets_folder='assets',
+    external_stylesheets=[
+        'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap'
+    ],
+)
 app.title = "SAMA - Dashboard de Emergencias"
+server = app.server
 
 # ============================================
 # LAYOUT
@@ -366,34 +374,29 @@ app.layout = html.Div([
     dcc.Store(id='store-filtros-amenaza', data={'municipio': None, 'subregion': None}),
     
     html.Div([
-        html.H2("📋 Navegación", style={'textAlign': 'center', 'color': '#2c3e50'}),
+        html.H2("📋 Navegación"),
         html.Hr(),
         dcc.RadioItems(
             id='radio-paginas',
+            className='sidebar-nav',
             options=[
                 {'label': '📊 Todas las Emergencias', 'value': 'todas'},
                 {'label': '🌧️ Emergencias por Lluvia', 'value': 'lluvia'},
                 {'label': '📌 Amenazas Secundarias', 'value': 'amenazas'}
             ],
-            value='todas',
-            labelStyle={'display': 'block', 'padding': '10px', 'fontSize': '16px'},
-            style={'padding': '10px'}
+            value='todas'
         ),
         html.Hr(),
         html.Div([
-            html.P("📊 **SAMA**", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-            html.P("Sistema de Alertas y Monitoreo de Antioquia", style={'fontSize': '14px', 'color': '#666'}),
-            html.P("Datos históricos de emergencias", style={'fontSize': '14px', 'color': '#666'})
-        ], style={'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'})
-    ], style={
-        'width': '20%', 'float': 'left', 'height': '100vh', 'padding': '20px',
-        'backgroundColor': '#f0f2f6', 'position': 'fixed', 'top': 0, 'left': 0,
-        'overflowY': 'auto', 'boxShadow': '2px 0 5px rgba(0,0,0,0.1)'
-    }),
+            html.P("SAMA", className='sidebar-info-title'),
+            html.P("Sistema de Alertas y Monitoreo de Antioquia"),
+            html.P("Datos históricos de emergencias")
+        ], className='sidebar-info')
+    ], className='sidebar'),
     
     html.Div([
         html.Div(id='contenido-principal')
-    ], style={'marginLeft': '22%', 'padding': '20px', 'minHeight': '100vh'})
+    ], className='main-content')
 ])
 
 
@@ -484,7 +487,7 @@ def crear_dashboard_figures_original(df, municipio_seleccionado=None, subregion_
     tabla_html = html.Table([
         html.Thead(html.Tr([html.Th('Año'), html.Th('Total Emergencias')])),
         html.Tbody([html.Tr([html.Td(row['Año']), html.Td(row['Total Emergencias'])]) for _, row in tabla_anios.iterrows()])
-    ], style={'width': '100%', 'borderCollapse': 'collapse', 'fontSize': '14px'})
+    ], className='sama-table')
     
     total = len(df_filtrado)
     municipio_top = df_filtrado.groupby('Municipio').size().idxmax() if len(df_filtrado) > 0 else "N/A"
@@ -545,20 +548,22 @@ def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_sele
     df_mapa = df_mapa.merge(df_coords_norm, on='Municipio_Norm', how='inner')
     
     if len(df_mapa) > 0:
-        fig2 = px.scatter_mapbox(
+        fig2 = px.scatter_map(
             df_mapa, lat='Latitud', lon='Longitud', color='Subregión',
             size='Total Emergencias', size_max=25, hover_name='Municipio_x',
             hover_data={'Total Emergencias': True, 'Subregión': True, 'Latitud': False, 'Longitud': False},
             color_discrete_sequence=px.colors.qualitative.Set3,
             zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
     else:
-        fig2 = px.scatter_mapbox(
+        fig2 = px.scatter_map(
             pd.DataFrame({'lat': [6.2], 'lon': [-75.5], 'text': ['Sin datos']}),
-            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5}
+            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
     
     # Gráfico 3: LÍNEAS POR MES
     if 'Mes' in df_filtrado.columns and len(df_filtrado) > 0:
@@ -607,7 +612,7 @@ def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_sele
     tabla_html = html.Table([
         html.Thead(html.Tr([html.Th('Año'), html.Th('Total Emergencias')])),
         html.Tbody([html.Tr([html.Td(row['Año']), html.Td(row['Total Emergencias'])]) for _, row in tabla_anios.iterrows()])
-    ], style={'width': '100%', 'borderCollapse': 'collapse', 'fontSize': '14px'})
+    ], className='sama-table')
     
     total = len(df_filtrado)
     municipio_top = df_filtrado.groupby('Municipio').size().idxmax() if len(df_filtrado) > 0 else "N/A"
@@ -635,11 +640,10 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
     mostrar_amenaza = (tipo == 'original' and pagina == 'todas')
     
     return html.Div([
-        html.H1(titulo, style={'textAlign': 'center'}),
-        html.P(subtitulo, style={'textAlign': 'center', 'color': '#666'}),
+        html.H1(titulo, className='page-title'),
+        html.P(subtitulo, className='page-subtitle'),
         html.Hr(),
         
-        # Filtros interactivos
         html.Div([
             html.Div([
                 html.Label("🏙️ Municipio:"),
@@ -649,7 +653,7 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
                     value=None,
                     placeholder="Selecciona un municipio..."
                 )
-            ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px'}),
+            ], className='filter-item'),
             
             html.Div([
                 html.Label("🗺️ Subregión:"),
@@ -659,7 +663,7 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
                     value=None,
                     placeholder="Selecciona una subregión..."
                 )
-            ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px', 'marginLeft': '2%'}),
+            ], className='filter-item'),
             
             html.Div([
                 html.Label("📊 Rango de Años:"),
@@ -667,44 +671,54 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
                     dcc.RangeSlider(
                         id=f'slider-rango-{pagina}',
                         min=anio_min, max=anio_max, value=[anio_min, anio_max],
-                        marks={str(i): str(i) for i in range(anio_min, anio_max+1, 10)},
-                        step=1
+                        marks={anio_min: str(anio_min), anio_max: str(anio_max)},
+                        step=1,
+                        allowCross=False,
+                        tooltip={'placement': 'top', 'always_visible': True}
                     ),
-                    html.Div(id=f'texto-rango-tabla-{pagina}', style={'textAlign': 'center', 'marginTop': '10px'})
+                    html.Div(id=f'texto-rango-tabla-{pagina}', className='filter-range-text')
                 ])
-            ], style={'width': '30%', 'display': 'inline-block', 'padding': '10px', 'marginLeft': '2%'})
-        ], style={'display': 'flex', 'justifyContent': 'space-between', 'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '10px', 'marginBottom': '20px'}),
+            ], className='filter-item filter-item-range')
+        ], className='filters-panel'),
         
-        # Cards de métricas
         html.Div([
             html.Div([
                 html.H3("📊 Total Emergencias"),
-                html.H2(id=f'total-{pagina}', children=f"{total:,}", style={'color': '#FF4444'})
-            ], style={'width': '25%', 'display': 'inline-block', 'textAlign': 'center'}),
+                html.H2(id=f'total-{pagina}', children=f"{total:,}")
+            ], className='metric-card metric-danger'),
             html.Div([
                 html.H3("📍 Municipio Más Afectado"),
-                html.H2(id=f'municipio-{pagina}', children=municipio_top, style={'color': '#4444FF'})
-            ], style={'width': '25%', 'display': 'inline-block', 'textAlign': 'center', 'marginLeft': '5%'}),
+                html.H2(id=f'municipio-{pagina}', children=municipio_top)
+            ], className='metric-card metric-primary'),
             html.Div([
                 html.H3("📅 Total de Registros"),
-                html.H2(id=f'total-registros-{pagina}', children=f"{len(df):,}", style={'color': '#28A745'})
-            ], style={'width': '25%', 'display': 'inline-block', 'textAlign': 'center', 'marginLeft': '5%'})
-        ], style={'display': 'flex', 'justifyContent': 'space-around', 'padding': '20px'}),
+                html.H2(id=f'total-registros-{pagina}', children=f"{len(df):,}")
+            ], className='metric-card metric-success')
+        ], className='metrics-row'),
         html.Hr(),
-        html.Div([html.Div(id=f'filtros-{pagina}', style={'fontSize': '16px', 'padding': '10px'})]),
+        html.Div([html.Div(id=f'filtros-{pagina}', className='filtros-activos')]),
         html.Hr(),
         html.Div([
             html.Div([
-                html.Div([html.H4("🏙️ Top municipios con más emergencias"), dcc.Graph(id=f'grafico1-{pagina}', config={'displayModeBar': False})], style={'marginBottom': '20px'}),
-                html.Div([html.H4("🗺️ " + ("Total Emergencias por Subregión" if tipo == 'original' else "Municipios afectados por Subregión")), dcc.Graph(id=f'grafico2-{pagina}', config={'displayModeBar': False})], style={'marginBottom': '20px'}),
-                html.Div([html.H4("📊 " + ("Emergencias por tipo de Amenaza" if tipo == 'original' else "Emergencias por mes del año")), dcc.Graph(id=f'grafico3-{pagina}', config={'displayModeBar': False})])
-            ], style={'width': '70%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '20px'}),
+                html.Div([
+                    html.H4("🏙️ Top municipios con más emergencias"),
+                    dcc.Graph(id=f'grafico1-{pagina}', config={'displayModeBar': False})
+                ], className='chart-card'),
+                html.Div([
+                    html.H4("🗺️ " + ("Total Emergencias por Subregión" if tipo == 'original' else "Municipios afectados por Subregión")),
+                    dcc.Graph(id=f'grafico2-{pagina}', config={'displayModeBar': False})
+                ], className='chart-card'),
+                html.Div([
+                    html.H4("📊 " + ("Emergencias por tipo de Amenaza" if tipo == 'original' else "Emergencias por mes del año")),
+                    dcc.Graph(id=f'grafico3-{pagina}', config={'displayModeBar': False})
+                ], className='chart-card')
+            ], className='charts-column'),
             html.Div([
                 html.H4("📅 Total Emergencias por Año"),
-                html.Div(id=f'tabla-{pagina}', style={'maxHeight': '600px', 'overflowY': 'auto'}),
-                html.Div(id=f'texto-registros-{pagina}', style={'marginTop': '10px', 'fontSize': '14px', 'color': '#666'})
-            ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top'})
-        ], style={'display': 'flex'})
+                html.Div(id=f'tabla-{pagina}', className='table-scroll'),
+                html.Div(id=f'texto-registros-{pagina}', className='table-caption')
+            ], className='table-column table-card')
+        ], className='content-row')
     ])
 
 
@@ -731,8 +745,8 @@ def cambiar_pagina(pagina):
     else:
         grupos_disponibles = sorted(df_emergencias[df_emergencias['Grupo_Amenaza'] != 'Sin clasificar']['Grupo_Amenaza'].unique())
         return html.Div([
-            html.H1("📌 Dashboard de Amenazas Secundarias", style={'textAlign': 'center'}),
-            html.P("Selecciona un grupo de amenaza secundaria para visualizar", style={'textAlign': 'center', 'color': '#666'}),
+            html.H1("📌 Dashboard de Amenazas Secundarias", className='page-title'),
+            html.P("Selecciona un grupo de amenaza secundaria para visualizar", className='page-subtitle'),
             html.Hr(),
             html.Div([
                 html.Div([
@@ -742,8 +756,8 @@ def cambiar_pagina(pagina):
                         options=[{'label': g, 'value': g} for g in grupos_disponibles],
                         placeholder="Selecciona un grupo..."
                     )
-                ], style={'width': '50%', 'margin': '0 auto'})
-            ], style={'padding': '20px'}),
+                ], className='grupo-selector-inner')
+            ], className='grupo-selector'),
             html.Hr(),
             html.Div(id='contenido-amenaza')
         ])
@@ -758,13 +772,17 @@ def cambiar_pagina(pagina):
 )
 def actualizar_grupo_amenaza(grupo_seleccionado):
     if not grupo_seleccionado:
-        return html.Div([html.P("Selecciona un grupo de amenaza para ver el dashboard", 
-                       style={'textAlign': 'center', 'fontSize': '18px', 'color': '#666', 'padding': '40px'})])
+        return html.Div([html.P(
+            "Selecciona un grupo de amenaza para ver el dashboard",
+            className='empty-state'
+        )])
     
     df_grupo = df_por_grupo.get(grupo_seleccionado, pd.DataFrame())
     if len(df_grupo) == 0:
-        return html.Div([html.P(f"No se encontraron datos para '{grupo_seleccionado}'", 
-                       style={'textAlign': 'center', 'fontSize': '18px', 'color': '#FF4444', 'padding': '40px'})])
+        return html.Div([html.P(
+            f"No se encontraron datos para '{grupo_seleccionado}'",
+            className='empty-state empty-state-danger'
+        )])
     
     return crear_layout_pagina(
         f"📌 Dashboard de {grupo_seleccionado}",
@@ -994,11 +1012,12 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     if not grupo_seleccionado:
         fig_vacio = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), y='x', x='y')
         fig_vacio.update_layout(height=350, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-        fig_mapa = px.scatter_mapbox(
+        fig_mapa = px.scatter_map(
             pd.DataFrame({'lat': [6.2], 'lon': [-75.5], 'text': ['Sin datos']}),
-            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5}
+            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
         fig_mes = px.line(pd.DataFrame({'Mes': range(1, 13), 'Total': [0]*12}), x='Mes', y='Total')
         fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
         return fig_vacio, fig_mapa, fig_mes, html.Div("Selecciona un grupo"), "0 registros", "✅ Sin filtros", "0", "N/A"
@@ -1007,11 +1026,12 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     if len(df_grupo) == 0:
         fig_vacio = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), y='x', x='y')
         fig_vacio.update_layout(height=350, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-        fig_mapa = px.scatter_mapbox(
+        fig_mapa = px.scatter_map(
             pd.DataFrame({'lat': [6.2], 'lon': [-75.5], 'text': ['Sin datos']}),
-            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5}
+            lat='lat', lon='lon', text='text', zoom=6, center={"lat": 6.2, "lon": -75.5},
+            map_style="open-street-map",
         )
-        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), mapbox_style="open-street-map")
+        fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
         fig_mes = px.line(pd.DataFrame({'Mes': range(1, 13), 'Total': [0]*12}), x='Mes', y='Total')
         fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
         return fig_vacio, fig_mapa, fig_mes, html.Div("No hay datos"), "0 registros", "✅ Sin filtros", "0", "N/A"
@@ -1061,4 +1081,5 @@ def update_texto_amenaza(value):
 # EJECUTAR APP
 # ============================================
 if __name__ == '__main__':
-    app.run(debug=True, port=8050)
+    port = int(os.environ.get('PORT', 8050))
+    app.run(debug=False, host='0.0.0.0', port=port)
