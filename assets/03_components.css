@@ -194,6 +194,19 @@
   width: 70%;
 }
 
+.charts-full-column {
+  width: 100%;
+}
+
+.charts-row-2col {
+  display: flex;
+  gap: 20px;
+}
+
+.charts-row-2col .chart-card {
+  width: 50%;
+}
+
 .table-column {
   width: 30%;
 }

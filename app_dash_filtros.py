@@ -38,10 +38,143 @@ def cargar_datos():
 df_emergencias = cargar_datos()
 
 # ============================================
-# FUNCIÓN PARA NORMALIZAR MUNICIPIOS
+# COORDENADAS OFICIALES DE CABECERAS MUNICIPALES
+# (idénticas a Cabeceras_Municipales.csv: se conserva la mayúscula inicial,
+# las tildes y la ñ del español; este es el nombre que debe mostrarse siempre)
 # ============================================
-def normalizar_municipio(nombre):
-    """Normaliza nombres de municipios: mayúsculas, sin tildes, sin espacios extras"""
+COORDS_BASE = {
+        'Medellín': (6.246631, -75.581775),
+        'Abejorral': (5.789315, -75.428739),
+        'Abriaquí': (6.632282, -76.064304),
+        'Alejandría': (6.376061, -75.141346),
+        'Amagá': (6.038708, -75.702188),
+        'Amalfi': (6.909655, -75.077501),
+        'Andes': (5.657194, -75.878828),
+        'Angelópolis': (6.109719, -75.711389),
+        'Angostura': (6.885175, -75.335116),
+        'Anorí': (7.074703, -75.148355),
+        'Santa Fé de Antioquia': (6.556484, -75.826648),
+        'Anzá': (6.302641, -75.854442),
+        'Apartadó': (7.882968, -76.625279),
+        'Arboletes': (8.849317, -76.426708),
+        'Argelia': (5.731474, -75.141070),
+        'Armenia': (6.155667, -75.786647),
+        'Barbosa': (6.439195, -75.331627),
+        'Belmira': (6.606319, -75.667779),
+        'Bello': (6.333587, -75.555245),
+        'Betania': (5.746150, -75.976790),
+        'Betulia': (6.115208, -75.984452),
+        'Ciudad Bolívar': (5.850273, -76.021509),
+        'Briceño': (7.112803, -75.550360),
+        'Buriticá': (6.720759, -75.907000),
+        'Cáceres': (7.578366, -75.352050),
+        'Caicedo': (6.405607, -75.982930),
+        'Caldas': (6.091077, -75.633673),
+        'Campamento': (6.979771, -75.298091),
+        'Cañasgordas': (6.753859, -76.028228),
+        'Caracolí': (6.409829, -74.757421),
+        'Caramanta': (5.548530, -75.643868),
+        'Carepa': (7.755148, -76.652652),
+        'El Carmen de Viboral': (6.082885, -75.333901),
+        'Carolina': (6.725995, -75.283192),
+        'Caucasia': (7.977278, -75.197996),
+        'Chigorodó': (7.666147, -76.681531),
+        'Cisneros': (6.537829, -75.087047),
+        'Cocorná': (6.058295, -75.185483),
+        'Concepción': (6.394348, -75.257587),
+        'Concordia': (6.045738, -75.908448),
+        'Copacabana': (6.348557, -75.509384),
+        'Dabeiba': (6.998112, -76.261614),
+        'Don Matías': (6.485603, -75.392630),
+        'Ebéjico': (6.325615, -75.766413),
+        'El Bagre': (7.597500, -74.799097),
+        'Entrerríos': (6.566273, -75.517685),
+        'Envigado': (6.166695, -75.582192),
+        'Fredonia': (5.928039, -75.675072),
+        'Frontino': (6.776066, -76.130765),
+        'Giraldo': (6.680808, -75.952158),
+        'Girardota': (6.379472, -75.444238),
+        'Gómez Plata': (6.683269, -75.220018),
+        'Granada': (6.142892, -75.184446),
+        'Guadalupe': (6.815069, -75.239862),
+        'Guarne': (6.277870, -75.441612),
+        'Guatapé': (6.232461, -75.160041),
+        'Heliconia': (6.206757, -75.734322),
+        'Hispania': (5.799461, -75.906587),
+        'Itagüí': (6.175079, -75.612056),
+        'Ituango': (7.171629, -75.764673),
+        'Jardín': (5.597542, -75.818982),
+        'Jericó': (5.789748, -75.785499),
+        'La Ceja': (6.028062, -75.429433),
+        'La Estrella': (6.145238, -75.637708),
+        'La Pintada': (5.743808, -75.607810),
+        'La Unión': (5.973845, -75.360874),
+        'Liborina': (6.677316, -75.812838),
+        'Maceo': (6.552116, -74.787160),
+        'Marinilla': (6.173995, -75.339345),
+        'Montebello': (5.946313, -75.523455),
+        'Murindó': (6.977710, -76.817485),
+        'Mutatá': (7.242875, -76.435875),
+        'Nariño': (5.610777, -75.176262),
+        'Necoclí': (8.434526, -76.787271),
+        'Nechí': (8.094129, -74.776470),
+        'Olaya': (6.626492, -75.811773),
+        'El Peñol': (6.219349, -75.242693),
+        'Peque': (7.021029, -75.910357),
+        'Pueblorrico': (5.791580, -75.839903),
+        'Puerto Berrío': (6.487028, -74.410016),
+        'Puerto Nare': (6.186025, -74.583012),
+        'Puerto Triunfo': (5.871318, -74.641190),
+        'Remedios': (7.029424, -74.698135),
+        'El Retiro': (6.062454, -75.501301),
+        'Rionegro': (6.147148, -75.377316),
+        'Sabanalarga': (6.850028, -75.816645),
+        'Sabaneta': (6.149903, -75.615479),
+        'Salgar': (5.964198, -75.976807),
+        'San Andrés de Cuerquia': (6.916676, -75.674564),
+        'San Carlos': (6.187746, -74.988097),
+        'San Francisco': (5.963476, -75.101562),
+        'San Jerónimo': (6.448090, -75.726975),
+        'San José de la Montaña': (6.850090, -75.683352),
+        'San Juan de Urabá': (8.758964, -76.528570),
+        'San Luis': (6.043017, -74.993619),
+        'San Pedro de los Milagros': (6.460120, -75.556743),
+        'San Pedro de Urabá': (8.276884, -76.380567),
+        'San Rafael': (6.293759, -75.028490),
+        'San Roque': (6.485939, -75.019109),
+        'San Vicente Ferrer': (6.282164, -75.332616),
+        'Santa Bárbara': (5.875527, -75.567351),
+        'Santa Rosa de Osos': (6.643366, -75.460723),
+        'Santo Domingo': (6.473032, -75.164903),
+        'El Santuario': (6.136871, -75.265465),
+        'Segovia': (7.079648, -74.701596),
+        'Sonsón': (5.714851, -75.309596),
+        'Sopetrán': (6.500745, -75.747378),
+        'Támesis': (5.664645, -75.714429),
+        'Tarazá': (7.580127, -75.401407),
+        'Tarso': (5.864542, -75.822956),
+        'Titiribí': (6.062391, -75.791887),
+        'Toledo': (7.010328, -75.692281),
+        'Turbo': (8.089929, -76.728858),
+        'Uramita': (6.898393, -76.173284),
+        'Urrao': (6.317343, -76.133951),
+        'Valdivia': (7.165200, -75.439274),
+        'Valparaiso': (5.614555, -75.624452),
+        'Vegachí': (6.773525, -74.798714),
+        'Venecia': (5.964693, -75.735544),
+        'Vigía del Fuerte': (6.588164, -76.896004),
+        'Yalí': (6.676554, -74.840059),
+        'Yarumal': (6.963832, -75.418828),
+        'Yolombó': (6.594511, -75.013385),
+        'Yondó': (7.003960, -73.912445),
+        'Zaragoza': (7.488583, -74.867075),
+}
+
+def _clave_normalizada(nombre):
+    """Clave de comparación (mayúsculas, sin tildes) usada ÚNICAMENTE para
+    emparejar nombres de municipios escritos de forma inconsistente en los
+    datos fuente (mayúsculas/minúsculas variables) con su registro oficial en
+    COORDS_BASE. Nunca se usa para mostrar el nombre en pantalla."""
     if pd.isna(nombre):
         return ''
     nombre = str(nombre).upper().strip()
@@ -53,233 +186,53 @@ def normalizar_municipio(nombre):
         nombre = nombre.replace(k, v)
     return ' '.join(nombre.split())
 
-# ============================================
-# CARGAR COORDENADAS DE MUNICIPIOS
-# ============================================
-def generar_coordenadas_para_municipios(municipios_list):
-    """Genera coordenadas aproximadas para una lista de municipios normalizados."""
-    coords_base = {
-        'MEDELLIN': (6.2442, -75.5812),
-        'BELLO': (6.3355, -75.5638),
-        'ITAGUI': (6.1674, -75.6207),
-        'ENVIGADO': (6.1710, -75.5920),
-        'SABANETA': (6.1492, -75.6160),
-        'LA ESTRELLA': (6.1500, -75.6300),
-        'CALDAS': (6.0900, -75.6400),
-        'RIONEGRO': (6.1450, -75.3800),
-        'CARMEN DE VIBORAL': (6.0800, -75.3300),
-        'MARINILLA': (6.1700, -75.3300),
-        'SANTUARIO': (6.1300, -75.2600),
-        'ABEJORRAL': (5.8800, -75.4300),
-        'LA CEJA': (6.0300, -75.4200),
-        'EL RETIRO': (6.0600, -75.5000),
-        'SANTA BARBARA': (5.8700, -75.5700),
-        'MONTEBELLO': (5.9400, -75.5200),
-        'FREDONIA': (5.9200, -75.6700),
-        'AMAGA': (6.0400, -75.7000),
-        'TITIRIBI': (6.0600, -75.7900),
-        'ANGELOPOLIS': (6.1100, -75.7100),
-        'ARMENIA': (6.1600, -75.7900),
-        'CARAMANTA': (5.8200, -75.6400),
-        'CONCORDIA': (6.0400, -75.9000),
-        'HELICONIA': (6.2100, -75.7300),
-        'JERICO': (5.7900, -75.7800),
-        'PUEBLORRICO': (5.7900, -75.8400),
-        'SALGAR': (5.9600, -75.9600),
-        'TARSO': (5.8600, -75.8200),
-        'TAMESIS': (5.6600, -75.7100),
-        'VALPARAISO': (5.6100, -75.6200),
-        'JARDIN': (5.6000, -75.8200),
-        'ANDES': (5.6600, -75.8800),
-        'BETANIA': (5.7400, -75.9700),
-        'BETULIA': (6.1100, -75.9800),
-        'CAICEDO': (6.4000, -75.9800),
-        'ANZA': (6.3000, -75.8500),
-        'BURITICA': (6.7200, -75.9000),
-        'CANASGORDAS': (6.7500, -76.0200),
-        'DABEIBA': (7.0000, -76.1800),
-        'EBEJICO': (6.3300, -75.7700),
-        'FRONTINO': (6.7800, -76.1300),
-        'GIRALDO': (6.6800, -75.9500),
-        'LIBORINA': (6.6700, -75.8100),
-        'OLAYA': (6.6200, -75.8100),
-        'PEQUE': (6.9200, -76.0300),
-        'SABANALARGA': (6.8500, -75.8200),
-        'SAN JERONIMO': (6.4500, -75.7300),
-        'SANTA FE DE ANTIOQUIA': (6.5600, -75.8300),
-        'SOPETRAN': (6.5000, -75.7400),
-        'URAMITA': (6.9000, -76.1700),
-        'YARUMAL': (7.0000, -75.4200),
-        'ANGOSTURA': (6.9000, -75.3300),
-        'BELMIRA': (6.6000, -75.6600),
-        'CAROLINA': (6.7200, -75.2800),
-        'DONMATIAS': (6.4800, -75.3900),
-        'ENTRERRIOS': (6.5700, -75.5000),
-        'GOMEZ PLATA': (6.6800, -75.2200),
-        'GUADALUPE': (6.8100, -75.2400),
-        'ITUANGO': (7.1700, -75.7600),
-        'SAN ANDRES DE CUERQUIA': (6.9000, -75.6700),
-        'SAN JOSE DE LA MONTAÑA': (6.8500, -75.6800),
-        'SAN PEDRO DE LOS MILAGROS': (6.4600, -75.5600),
-        'SANTA ROSA DE OSOS': (6.6400, -75.4600),
-        'TOLEDO': (6.9100, -75.5700),
-        'VALDIVIA': (7.3100, -75.4400),
-        'CAUCASIA': (7.9800, -75.1900),
-        'EL BAGRE': (7.6000, -74.8000),
-        'NECHI': (8.0900, -74.7800),
-        'TARAZA': (7.5800, -75.4000),
-        'ZARAGOZA': (7.4900, -74.8700),
-        'CACERES': (7.5800, -75.3400),
-        'CISNEROS': (6.5400, -75.0800),
-        'SAN ROQUE': (6.4800, -75.0200),
-        'SANTO DOMINGO': (6.4700, -75.1600),
-        'CONCEPCION': (6.4100, -75.2500),
-        'EL PEÑOL': (6.2200, -75.2400),
-        'GUARNE': (6.2800, -75.4400),
-        'SAN VICENTE': (6.2800, -75.3300),
-        'SAN RAFAEL': (6.2900, -75.0300),
-        'ALEJANDRIA': (6.3700, -75.1400),
-        'GUATAPE': (6.2300, -75.1500),
-        'GRANADA': (6.1300, -75.1800),
-        'LA UNION': (5.9700, -75.3600),
-        'SONSON': (5.7100, -75.3100),
-        'AGUADAS': (5.6100, -75.4500),
-        'LA DORADA': (5.4500, -74.6600),
-        'PUERTO BERRÍO': (6.4900, -74.4000),
-        'PUERTO NARE': (6.1900, -74.5800),
-        'PUERTO TRIUNFO': (5.8700, -74.6500),
-        'TURBO': (8.0900, -76.7300),
-        'APARTADO': (7.8800, -76.6200),
-        'ARBOLETES': (8.8500, -76.4200),
-        'CAREPA': (7.7500, -76.6500),
-        'CHIGORODO': (7.6700, -76.6800),
-        'MURINDO': (6.9800, -76.7700),
-        'NECOCLI': (8.4300, -76.7800),
-        'SAN JUAN DE URABA': (8.7600, -76.5300),
-        'SAN PEDRO DE URABA': (8.2800, -76.3800),
-        'VIGIA DEL FUERTE': (6.5800, -76.8800),
-        'MACEO': (6.5800, -74.7800),
-        'COCORNA': (6.0600, -75.1800),
-        'SAN CARLOS': (6.1900, -74.9900),
-        'SAN FRANCISCO': (6.1200, -75.0800),
-        'ARGELIA': (5.7300, -75.1400),
-        'NARIÑO': (5.6100, -75.1700),
-        'URRAO': (5.9800, -76.1300),
-        'CARACOLI': (6.4100, -74.7600),
-        'YOLOMBO': (6.6000, -75.0100),
-        'CIUDAD BOLIVAR': (5.8500, -76.0200),
-        'VENECIA': (5.9600, -75.7200),
-        'REMEDIOS': (7.0300, -74.4600),
-        'LA PINTADA': (5.7500, -75.6000),
-        'SAN LUIS': (6.0400, -75.1000),
-        'YALI': (6.6700, -74.8300),
-        'SEGOVIA': (7.0800, -74.7000),
-        'HISPANIA': (5.8000, -75.9000),
-        'ANORI': (7.0700, -75.1400),
-        'MUTATA': (7.2500, -76.4300),
-        'CAMPAMENTO': (6.9800, -75.3000),
-        'YONDO': (7.0000, -73.9000),
-        'BRICEÑO': (7.1100, -75.5500),
-        'VEGACHI': (6.7700, -74.8000),
-        'AMALFI': (6.9100, -75.0800),
-        'EL SANTUARIO': (6.1300, -75.2600),
-        'COPACABANA': (6.3500, -75.5100),
-        'BARBOSA': (6.4400, -75.3300),
-        'GIRARDOTA': (6.3800, -75.4500),
-        'ABRIAQUI': (6.6400, -76.0600),
-        'SAN PEDRO': (6.4600, -75.5600),
-        'SAN JOSE': (6.8500, -75.6800),
-    }
-    
-    coords_list = []
-    for mun in municipios_list:
-        mun_upper = mun.upper().strip()
-        if mun_upper in coords_base:
-            lat, lon = coords_base[mun_upper]
-        else:
-            lat, lon = 6.2, -75.5
-            print(f"⚠️ Municipio sin coordenadas: {mun}")
-        
-        coords_list.append({
-            'Municipio': mun_upper,
-            'Municipio_Norm': mun_upper,
-            'Latitud': lat,
-            'Longitud': lon
-        })
-    
-    return coords_list
+# Alias para variantes del dato fuente que no coinciden con COORDS_BASE ni
+# siquiera después de quitar tildes/mayúsculas (falta un espacio o una palabra).
+# La clave es la variante ya pasada por _clave_normalizada; el valor es el
+# nombre oficial (tal cual aparece en COORDS_BASE) al que debe apuntar.
+ALIAS_MUNICIPIOS = {
+    'DONMATIAS': 'Don Matías',
+    'SAN VICENTE': 'San Vicente Ferrer',
+}
+
+# Índice de coordenadas por clave normalizada, conservando siempre el nombre
+# y las coordenadas EXACTAS de COORDS_BASE (con tildes, ñ y mayúscula inicial)
+COORDS_POR_CLAVE = {
+    _clave_normalizada(nombre): {'Municipio': nombre, 'Latitud': lat, 'Longitud': lon}
+    for nombre, (lat, lon) in COORDS_BASE.items()
+}
+for _clave_alias, _nombre_oficial in ALIAS_MUNICIPIOS.items():
+    _lat, _lon = COORDS_BASE[_nombre_oficial]
+    COORDS_POR_CLAVE[_clave_alias] = {'Municipio': _nombre_oficial, 'Latitud': _lat, 'Longitud': _lon}
 
 def cargar_coordenadas(df):
     """
-    Carga o genera coordenadas para todos los municipios.
-    Usa la columna 'Municipio' y la normaliza.
+    Construye la tabla de coordenadas para los municipios presentes en df.
+    El nombre y las coordenadas mostradas son siempre los de COORDS_BASE;
+    la clave normalizada solo se usa internamente para encontrar el registro.
     """
-    
-    # Obtener municipios únicos del DataFrame usando la columna 'Municipio'
-    municipios_unicos = df['Municipio'].unique()
-    municipios_normalizados = [normalizar_municipio(m) for m in municipios_unicos]
-    
-    print(f"📊 Municipios únicos en datos: {len(municipios_unicos)}")
-    
-    # Verificar si existe el archivo de coordenadas
-    ruta_coordenadas = 'coordenadas_municipios_antioquia.csv'
-    
-    if os.path.exists(ruta_coordenadas):
-        df_coords = pd.read_csv(ruta_coordenadas)
-        print(f"✅ Coordenadas cargadas: {len(df_coords)} registros")
-        
-        # Normalizar los nombres en el archivo de coordenadas
-        df_coords['Municipio_Norm'] = df_coords['Municipio'].apply(normalizar_municipio)
-        
-        # Crear un diccionario de coordenadas únicas por municipio normalizado
-        coords_dict = {}
-        for _, row in df_coords.iterrows():
-            nombre_norm = row['Municipio_Norm']
-            if nombre_norm and nombre_norm not in coords_dict:
-                coords_dict[nombre_norm] = (row['Latitud'], row['Longitud'])
-        
-        print(f"📊 Municipios con coordenadas únicas: {len(coords_dict)}")
-        
-        # Verificar qué municipios faltan
-        municipios_sin_coords = []
-        for mun_norm in municipios_normalizados:
-            if mun_norm and mun_norm not in coords_dict:
-                municipios_sin_coords.append(mun_norm)
-        
-        if municipios_sin_coords:
-            print(f"⚠️ {len(municipios_sin_coords)} municipios sin coordenadas, generando aproximadas...")
-            nuevas_coords = generar_coordenadas_para_municipios(municipios_sin_coords)
-            
-            # Agregar nuevas coordenadas al diccionario
-            for coord in nuevas_coords:
-                nombre_norm = coord['Municipio_Norm']
-                if nombre_norm not in coords_dict:
-                    coords_dict[nombre_norm] = (coord['Latitud'], coord['Longitud'])
-            
-            print(f"✅ Total municipios con coordenadas: {len(coords_dict)}")
-        
-        # Crear DataFrame final con coordenadas únicas
-        coords_list = []
-        for nombre_norm, (lat, lon) in coords_dict.items():
-            coords_list.append({
-                'Municipio': nombre_norm,
-                'Municipio_Norm': nombre_norm,
-                'Latitud': lat,
-                'Longitud': lon
+    filas = []
+    claves_vistas = set()
+    for mun in df['Municipio'].dropna().unique():
+        clave = _clave_normalizada(mun)
+        if not clave or clave in claves_vistas:
+            continue
+        claves_vistas.add(clave)
+        info = COORDS_POR_CLAVE.get(clave)
+        if info is None:
+            print(f"⚠️ Municipio sin coordenadas en COORDS_BASE: {mun}")
+            filas.append({
+                'Municipio': mun, 'Municipio_Norm': clave,
+                'Latitud': 6.2, 'Longitud': -75.5
             })
-        
-        df_coords_final = pd.DataFrame(coords_list)
-        df_coords_final.to_csv(ruta_coordenadas, index=False)
-        print(f"✅ Archivo de coordenadas actualizado con {len(df_coords_final)} municipios")
-        
-        return df_coords_final
-    else:
-        print("⚠️ No se encontró archivo de coordenadas. Generando coordenadas para todos los municipios...")
-        coords_list = generar_coordenadas_para_municipios(municipios_normalizados)
-        df_coords = pd.DataFrame(coords_list)
-        df_coords.to_csv(ruta_coordenadas, index=False)
-        print(f"✅ Coordenadas generadas para {len(df_coords)} municipios")
-        return df_coords
+        else:
+            filas.append({
+                'Municipio': info['Municipio'], 'Municipio_Norm': clave,
+                'Latitud': info['Latitud'], 'Longitud': info['Longitud']
+            })
+
+    print(f"✅ Coordenadas asignadas para {len(filas)} municipios")
+    return pd.DataFrame(filas)
 
 df_coordenadas = cargar_coordenadas(df_emergencias)
 
@@ -351,6 +304,129 @@ for grupo in df_emergencias['Grupo_Amenaza'].unique():
         df_por_grupo[grupo] = df_emergencias[df_emergencias['Grupo_Amenaza'] == grupo].copy()
 
 # ============================================
+# ENSO / RONI (Página 4)
+# ============================================
+MESES_ABREV = {
+    1: 'ene', 2: 'feb', 3: 'mar', 4: 'abr', 5: 'may', 6: 'jun',
+    7: 'jul', 8: 'ago', 9: 'sep', 10: 'oct', 11: 'nov', 12: 'dic'
+}
+
+ENSO_ORDEN = ['El Niño', 'La Niña', 'Neutral', 'Sin dato']
+ENSO_COLORS = {
+    'El Niño': '#F4A6B7',
+    'La Niña': '#5B4FCF',
+    'Neutral': '#B5B5B5',
+    'Sin dato': '#E0E0E0',
+}
+
+# Amenazas secundarias asociadas a lluvia que se muestran en el gráfico ENSO
+# vs. Amenaza secundaria (se ignoran categorías minoritarias como Socavación,
+# Colapso estructural, Granizada, etc.)
+AMENAZAS_LLUVIA_ORDEN = ['Avenida torrencial', 'Creciente súbita', 'Inundación', 'Movimiento en masa', 'Vendaval']
+
+def clasificar_amenaza_lluvia(texto):
+    """Normaliza variantes de mayúsculas ('Avenida Torrencial' vs 'Avenida torrencial')
+    y descarta amenazas secundarias que no están en AMENAZAS_LLUVIA_ORDEN."""
+    if pd.isna(texto):
+        return None
+    texto_lower = str(texto).strip().lower()
+    for categoria in AMENAZAS_LLUVIA_ORDEN:
+        if texto_lower == categoria.lower():
+            return categoria
+    return None
+
+def _tabla_mensual_enso(df):
+    """Un registro por (Año, Mes) con el total de emergencias de ese mes y la
+    categoría ENSO_RONI vigente ese mes (el índice RONI es mensual, no varía
+    entre registros del mismo mes)."""
+    base = df[(df['Año'] > 0) & df['Mes'].notna()].copy()
+    if len(base) == 0:
+        return pd.DataFrame(columns=['Año', 'Mes', 'Total Emergencias', 'ENSO_RONI', 'Fecha_Mes'])
+
+    total_mensual = base.groupby(['Año', 'Mes']).size().reset_index(name='Total Emergencias')
+    enso_mensual = base.groupby(['Año', 'Mes'])['ENSO_RONI'].agg(
+        lambda s: s.mode().iloc[0] if len(s.mode()) else 'Sin dato'
+    ).reset_index()
+
+    tabla = total_mensual.merge(enso_mensual, on=['Año', 'Mes'])
+    tabla['Fecha_Mes'] = pd.to_datetime(dict(
+        year=tabla['Año'].astype(int), month=tabla['Mes'].astype(int), day=1
+    ))
+    return tabla.sort_values('Fecha_Mes')
+
+def crear_dashboard_figures_enso(df, subregion_seleccionada=None, slider_value=None):
+    """Página ENSO/RONI: emergencias por lluvia vs. las fases del fenómeno ENSO."""
+    df_filtrado = df.copy()
+    if subregion_seleccionada:
+        df_filtrado = df_filtrado[df_filtrado['Subregión'] == subregion_seleccionada]
+    if slider_value:
+        df_filtrado = df_filtrado[(df_filtrado['Año'] >= slider_value[0]) & (df_filtrado['Año'] <= slider_value[1])]
+
+    tabla_mensual = _tabla_mensual_enso(df_filtrado)
+
+    # Gráfico 1: barras por fase ENSO + línea de total mensual de emergencias
+    if len(tabla_mensual) > 0:
+        fig1 = px.bar(
+            tabla_mensual, x='Fecha_Mes', y='Total Emergencias', color='ENSO_RONI',
+            color_discrete_map=ENSO_COLORS, category_orders={'ENSO_RONI': ENSO_ORDEN},
+        )
+        fig1.add_trace(go.Scatter(
+            x=tabla_mensual['Fecha_Mes'], y=tabla_mensual['Total Emergencias'],
+            mode='lines', name='Total Emergencias Lluvia', line=dict(color='black', width=2)
+        ))
+        fig1.update_xaxes(tickformat='%b %Y', dtick='M6', tickangle=-45)
+        fig1.update_layout(
+            height=350, margin=dict(l=0, r=0, t=30, b=0),
+            legend_title_text='ENSO', yaxis_title='Total emergencias por lluvia'
+        )
+    else:
+        fig1 = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), x='x', y='y')
+        fig1.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
+
+    # Gráfico 2: promedio mensual de emergencias por mes calendario y fase ENSO
+    tabla_prom = tabla_mensual[tabla_mensual['ENSO_RONI'] != 'Sin dato']
+    if len(tabla_prom) > 0:
+        tabla_prom = tabla_prom.groupby(['Mes', 'ENSO_RONI'])['Total Emergencias'].mean().reset_index()
+        tabla_prom['Mes_Nombre'] = tabla_prom['Mes'].astype(int).map(MESES_ABREV)
+        fig2 = px.bar(
+            tabla_prom, x='Mes_Nombre', y='Total Emergencias', color='ENSO_RONI', barmode='group',
+            color_discrete_map=ENSO_COLORS, text_auto='.0f',
+            category_orders={'Mes_Nombre': list(MESES_ABREV.values()), 'ENSO_RONI': ['El Niño', 'La Niña', 'Neutral']},
+        )
+        fig2.update_traces(textposition='outside')
+        fig2.update_layout(
+            height=350, margin=dict(l=0, r=0, t=30, b=0),
+            legend_title_text='ENSO', xaxis_title='Mes', yaxis_title='Promedio mensual'
+        )
+    else:
+        fig2 = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), x='x', y='y')
+        fig2.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
+
+    # Gráfico 3: 100% apilado de amenaza secundaria por fase ENSO
+    df_amz = df_filtrado.copy()
+    df_amz['Amenaza_Cat'] = df_amz['Amenaza secundaria'].apply(clasificar_amenaza_lluvia)
+    df_amz = df_amz[df_amz['Amenaza_Cat'].notna() & (df_amz['ENSO_RONI'] != 'Sin dato')]
+    tabla_amz = df_amz.groupby(['ENSO_RONI', 'Amenaza_Cat']).size().reset_index(name='Total')
+    tabla_amz['Porcentaje'] = tabla_amz.groupby('ENSO_RONI')['Total'].transform(lambda s: s / s.sum() * 100)
+
+    if len(tabla_amz) > 0:
+        fig3 = px.bar(
+            tabla_amz, x='ENSO_RONI', y='Porcentaje', color='Amenaza_Cat', barmode='stack',
+            category_orders={'ENSO_RONI': ['La Niña', 'Neutral', 'El Niño'], 'Amenaza_Cat': AMENAZAS_LLUVIA_ORDEN},
+        )
+        fig3.update_traces(texttemplate='%{y:.2f}%', textposition='inside')
+        fig3.update_layout(
+            height=350, margin=dict(l=0, r=0, t=30, b=0),
+            legend_title_text='Amenaza secundaria', xaxis_title='ENSO',
+            yaxis_title='Total emergencias por lluvia (%)'
+        )
+    else:
+        fig3 = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), x='x', y='y')
+        fig3.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
+
+    return fig1, fig2, fig3, len(df_filtrado)
+
+# ============================================
 # INICIALIZAR APP
 # ============================================
 app = dash.Dash(
@@ -382,7 +458,8 @@ app.layout = html.Div([
             options=[
                 {'label': '📊 Todas las Emergencias', 'value': 'todas'},
                 {'label': '🌧️ Emergencias por Lluvia', 'value': 'lluvia'},
-                {'label': '📌 Amenazas Secundarias', 'value': 'amenazas'}
+                {'label': '📌 Amenazas Secundarias', 'value': 'amenazas'},
+                {'label': '🌊 ENSO / RONI', 'value': 'enso'}
             ],
             value='todas'
         ),
@@ -528,29 +605,25 @@ def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_sele
     fig1.update_traces(textposition='outside')
     
     # Gráfico 2: MAPA
-    def normalizar_mun(nombre):
-        if pd.isna(nombre):
-            return ''
-        nombre = str(nombre).upper().strip()
-        reemplazos = {'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ñ': 'N', 'Ü': 'U'}
-        for k, v in reemplazos.items():
-            nombre = nombre.replace(k, v)
-        return ' '.join(nombre.split())
-    
     df_mapa = df_filtrado.groupby(['Municipio', 'Subregión']).size().reset_index()
     df_mapa.columns = ['Municipio', 'Subregión', 'Total Emergencias']
-    df_mapa['Municipio_Norm'] = df_mapa['Municipio'].apply(normalizar_mun)
-    
-    # Unir con coordenadas
-    df_coords_norm = df_coordenadas.copy()
-    df_coords_norm['Municipio_Norm'] = df_coords_norm['Municipio_Norm'].apply(lambda x: x.upper().strip() if pd.notna(x) else '')
-    
-    df_mapa = df_mapa.merge(df_coords_norm, on='Municipio_Norm', how='inner')
-    
+    df_mapa['Municipio_Norm'] = df_mapa['Municipio'].apply(_clave_normalizada)
+
+    # Unir con las coordenadas oficiales (nombre y coordenadas exactas de COORDS_BASE)
+    df_mapa = df_mapa.merge(
+        df_coordenadas[['Municipio_Norm', 'Municipio', 'Latitud', 'Longitud']],
+        on='Municipio_Norm', how='inner', suffixes=('', '_oficial')
+    )
+
+    # Agrupar por el nombre oficial para combinar variantes de escritura del mismo municipio
+    df_mapa = df_mapa.groupby(
+        ['Municipio_oficial', 'Subregión', 'Latitud', 'Longitud'], as_index=False
+    )['Total Emergencias'].sum()
+
     if len(df_mapa) > 0:
         fig2 = px.scatter_map(
             df_mapa, lat='Latitud', lon='Longitud', color='Subregión',
-            size='Total Emergencias', size_max=25, hover_name='Municipio_x',
+            size='Total Emergencias', size_max=25, hover_name='Municipio_oficial',
             hover_data={'Total Emergencias': True, 'Subregión': True, 'Latitud': False, 'Longitud': False},
             color_discrete_sequence=px.colors.qualitative.Set3,
             zoom=6, center={"lat": 6.2, "lon": -75.5},
@@ -722,6 +795,73 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
     ])
 
 
+def crear_layout_pagina_enso(df):
+    """Layout de la página ENSO/RONI: emergencias por lluvia vs. las fases del fenómeno ENSO."""
+    anios_validos = [int(a) for a in df[df['Año'] > 0]['Año'].unique()]
+    anio_min = min(anios_validos) if anios_validos else 1950
+    anio_max = max(anios_validos) if anios_validos else 2025
+    # Por defecto se muestran los últimos 10 años: con el histórico completo
+    # (desde 1921) el Gráfico 1 queda ilegible; el usuario puede ampliar el
+    # rango arrastrando el slider.
+    anio_inicio_defecto = max(anio_min, anio_max - 9)
+    subregiones_unicas = sorted(df['Subregión'].dropna().unique())
+
+    return html.Div([
+        html.H1("🌊 SAMA - Emergencias por Lluvia vs. ENSO (RONI)", className='page-title'),
+        html.P("Relación entre las emergencias por lluvia y las fases del fenómeno ENSO (índice RONI)", className='page-subtitle'),
+        html.Hr(),
+
+        html.Div([
+            html.Div([
+                html.Label("📊 Rango de Años:"),
+                dcc.RangeSlider(
+                    id='slider-rango-enso',
+                    min=anio_min, max=anio_max, value=[anio_inicio_defecto, anio_max],
+                    marks={anio_min: str(anio_min), anio_max: str(anio_max)},
+                    step=1, allowCross=False,
+                    tooltip={'placement': 'top', 'always_visible': True}
+                )
+            ], className='filter-item filter-item-range'),
+
+            html.Div([
+                html.Label("🗺️ Subregión:"),
+                dcc.Dropdown(
+                    id='dropdown-subregion-enso',
+                    options=[{'label': 'Todas', 'value': None}] + [{'label': s, 'value': s} for s in subregiones_unicas],
+                    value=None,
+                    placeholder="Selecciona una subregión..."
+                )
+            ], className='filter-item'),
+        ], className='filters-panel'),
+
+        html.Div([
+            html.Div([
+                html.H3("📌 Total Emergencias por Lluvia"),
+                html.H2(id='total-enso', children=f"{len(df):,}")
+            ], className='metric-card metric-danger'),
+        ], className='metrics-row'),
+        html.Hr(),
+
+        html.Div([
+            html.Div([
+                html.H4("📈 Total de emergencias por mes vs. ENSO"),
+                dcc.Graph(id='grafico1-enso', config={'displayModeBar': False})
+            ], className='chart-card'),
+        ], className='charts-full-column'),
+
+        html.Div([
+            html.Div([
+                html.H4("📊 Promedio mensual de emergencias por Mes y ENSO"),
+                dcc.Graph(id='grafico2-enso', config={'displayModeBar': False})
+            ], className='chart-card'),
+            html.Div([
+                html.H4("🌧️ Total emergencias por lluvia y Amenaza secundaria vs. ENSO"),
+                dcc.Graph(id='grafico3-enso', config={'displayModeBar': False})
+            ], className='chart-card'),
+        ], className='charts-row-2col'),
+    ])
+
+
 # ============================================
 # CALLBACK PARA CAMBIAR DE PÁGINA
 # ============================================
@@ -742,6 +882,8 @@ def cambiar_pagina(pagina):
             "Emergencias asociadas a eventos de lluvia",
             df_lluvia, 'lluvia', 'mapa'
         )
+    elif pagina == 'enso':
+        return crear_layout_pagina_enso(df_lluvia)
     else:
         grupos_disponibles = sorted(df_emergencias[df_emergencias['Grupo_Amenaza'] != 'Sin clasificar']['Grupo_Amenaza'].unique())
         return html.Div([
@@ -1050,6 +1192,22 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     filtros_text = "🔍 Filtros activos: " + (" | ".join(filtros_parts) if filtros_parts else "✅ Sin filtros activos")
     
     return fig1, fig2, fig3, tabla, f"📌 {total:,} registros totales | {registros:,} en tabla", filtros_text, f"{total:,}", top
+
+
+# ============================================
+# CALLBACK DE FILTROS - PÁGINA "ENSO / RONI"
+# ============================================
+@app.callback(
+    [Output('grafico1-enso', 'figure'),
+     Output('grafico2-enso', 'figure'),
+     Output('grafico3-enso', 'figure'),
+     Output('total-enso', 'children')],
+    [Input('dropdown-subregion-enso', 'value'),
+     Input('slider-rango-enso', 'value')]
+)
+def update_enso(subregion, slider_value):
+    fig1, fig2, fig3, total = crear_dashboard_figures_enso(df_lluvia, subregion, slider_value)
+    return fig1, fig2, fig3, f"{total:,}"
 
 
 # ============================================
