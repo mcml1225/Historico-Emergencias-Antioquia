@@ -205,6 +205,7 @@ for _clave_alias, _nombre_oficial in ALIAS_MUNICIPIOS.items():
     _lat, _lon = COORDS_BASE[_nombre_oficial]
     COORDS_POR_CLAVE[_clave_alias] = {'Municipio': _nombre_oficial, 'Latitud': _lat, 'Longitud': _lon}
 
+
 def cargar_coordenadas(df):
     """
     Construye la tabla de coordenadas para los municipios presentes en df.
