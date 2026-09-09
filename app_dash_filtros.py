@@ -446,8 +446,8 @@ server = app.server
 # ============================================
 app.layout = html.Div([
     # Stores para filtros por página
-    dcc.Store(id='store-filtros-todas', data={'municipio': None, 'subregion': None}),
-    dcc.Store(id='store-filtros-lluvia', data={'municipio': None, 'subregion': None}),
+    dcc.Store(id='store-filtros-todas', data={'subregion': None}),
+    dcc.Store(id='store-filtros-lluvia', data={'subregion': None}),
     dcc.Store(id='store-filtros-amenaza', data={'municipio': None, 'subregion': None}),
     
     html.Div([
@@ -704,31 +704,24 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
     municipio_top = df.groupby('Municipio').size().idxmax() if len(df) > 0 else "N/A"
     anios_validos = [int(a) for a in df[df['Año'] > 0]['Año'].unique()]
     anio_min = min(anios_validos) if anios_validos else 1903
-    anio_max = max(anios_validos) if anios_validos else 2026
+    # El slider siempre llega hasta 2026 como mínimo, aunque esta página en
+    # particular todavía no tenga registros de ese año (p. ej. Lluvia o
+    # algunos grupos de Amenazas Secundarias), para que los filtros queden
+    # listos cuando se carguen los nuevos datos del año en curso.
+    anio_max = max(anios_validos + [2026]) if anios_validos else 2026
     
     # Obtener listas únicas para filtros
-    municipios_unicos = sorted(df['Municipio'].dropna().unique())
     subregiones_unicas = sorted(df['Subregión'].dropna().unique())
-    
+
     # Para la página 1, los filtros son solo municipio y subregión
     mostrar_amenaza = (tipo == 'original' and pagina == 'todas')
-    
+
     return html.Div([
         html.H1(titulo, className='page-title'),
         html.P(subtitulo, className='page-subtitle'),
         html.Hr(),
-        
+
         html.Div([
-            html.Div([
-                html.Label("🏙️ Municipio:"),
-                dcc.Dropdown(
-                    id=f'dropdown-municipio-{pagina}',
-                    options=[{'label': 'Todos', 'value': None}] + [{'label': m, 'value': m} for m in municipios_unicos],
-                    value=None,
-                    placeholder="Selecciona un municipio..."
-                )
-            ], className='filter-item'),
-            
             html.Div([
                 html.Label("🗺️ Subregión:"),
                 dcc.Dropdown(
@@ -800,7 +793,8 @@ def crear_layout_pagina_enso(df):
     """Layout de la página ENSO/RONI: emergencias por lluvia vs. las fases del fenómeno ENSO."""
     anios_validos = [int(a) for a in df[df['Año'] > 0]['Año'].unique()]
     anio_min = min(anios_validos) if anios_validos else 1950
-    anio_max = max(anios_validos) if anios_validos else 2025
+    # El slider siempre llega hasta 2026 como mínimo (ver crear_layout_pagina).
+    anio_max = max(anios_validos + [2026]) if anios_validos else 2026
     # Por defecto se muestran los últimos 10 años: con el histórico completo
     # (desde 1921) el Gráfico 1 queda ilegible; el usuario puede ampliar el
     # rango arrastrando el slider.
@@ -941,47 +935,34 @@ def actualizar_grupo_amenaza(grupo_seleccionado):
 # Callback para actualizar filtros desde gráficos - Página "Todas"
 @app.callback(
     [Output('store-filtros-todas', 'data'),
-     Output('dropdown-municipio-todas', 'value'),
      Output('dropdown-subregion-todas', 'value')],
-    [Input('grafico1-todas', 'clickData'),
-     Input('grafico2-todas', 'clickData'),
-     Input('dropdown-municipio-todas', 'value'),
+    [Input('grafico2-todas', 'clickData'),
      Input('dropdown-subregion-todas', 'value')],
     [State('store-filtros-todas', 'data')]
 )
-def actualizar_filtros_todas(click1, click2, municipio_drop, subregion_drop, store_data):
+def actualizar_filtros_todas(click2, subregion_drop, store_data):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return store_data, municipio_drop, subregion_drop
-    
+        return store_data, subregion_drop
+
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
+
     # Inicializar filtros con valores actuales
-    filtros = store_data.copy() if store_data else {'municipio': None, 'subregion': None}
-    nuevo_municipio = municipio_drop
+    filtros = store_data.copy() if store_data else {'subregion': None}
     nueva_subregion = subregion_drop
-    
+
     # Procesar clicks en gráficos
-    if trigger_id == 'grafico1-todas' and click1:
-        point = click1['points'][0]
-        if 'y' in point:
-            nuevo_municipio = point['y']
-            filtros['municipio'] = nuevo_municipio
-    
-    elif trigger_id == 'grafico2-todas' and click2:
+    if trigger_id == 'grafico2-todas' and click2:
         point = click2['points'][0]
         if 'y' in point:
             nueva_subregion = point['y']
             filtros['subregion'] = nueva_subregion
-    
-    # Actualizar desde dropdowns
-    elif trigger_id == 'dropdown-municipio-todas':
-        filtros['municipio'] = municipio_drop
-    
+
+    # Actualizar desde dropdown
     elif trigger_id == 'dropdown-subregion-todas':
         filtros['subregion'] = subregion_drop
-    
-    return filtros, nuevo_municipio, nueva_subregion
+
+    return filtros, nueva_subregion
 
 
 # Callback para actualizar gráficos - Página "Todas"
@@ -999,15 +980,13 @@ def actualizar_filtros_todas(click1, click2, municipio_drop, subregion_drop, sto
      Input(f'slider-rango-todas', 'value')]
 )
 def update_todas(store_filtros, slider_value):
-    municipio = store_filtros.get('municipio') if store_filtros else None
     subregion = store_filtros.get('subregion') if store_filtros else None
-    
+
     fig1, fig2, fig3, tabla, total, top, registros = crear_dashboard_figures_original(
-        df_emergencias, municipio, subregion, slider_value
+        df_emergencias, None, subregion, slider_value
     )
-    
+
     filtros_parts = []
-    if municipio: filtros_parts.append(f"🏙️ {municipio}")
     if subregion: filtros_parts.append(f"🗺️ {subregion}")
     
     filtros_text = "🔍 Filtros activos: " + (" | ".join(filtros_parts) if filtros_parts else "✅ Sin filtros activos")
@@ -1021,45 +1000,32 @@ def update_todas(store_filtros, slider_value):
 
 @app.callback(
     [Output('store-filtros-lluvia', 'data'),
-     Output('dropdown-municipio-lluvia', 'value'),
      Output('dropdown-subregion-lluvia', 'value')],
-    [Input('grafico1-lluvia', 'clickData'),
-     Input('grafico2-lluvia', 'clickData'),
+    [Input('grafico2-lluvia', 'clickData'),
      Input('grafico3-lluvia', 'clickData'),
-     Input('dropdown-municipio-lluvia', 'value'),
      Input('dropdown-subregion-lluvia', 'value')],
     [State('store-filtros-lluvia', 'data')]
 )
-def actualizar_filtros_lluvia(click1, click2, click3, municipio_drop, subregion_drop, store_data):
+def actualizar_filtros_lluvia(click2, click3, subregion_drop, store_data):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return store_data, municipio_drop, subregion_drop
-    
+        return store_data, subregion_drop
+
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    filtros = store_data.copy() if store_data else {'municipio': None, 'subregion': None}
-    nuevo_municipio = municipio_drop
+
+    filtros = store_data.copy() if store_data else {'subregion': None}
     nueva_subregion = subregion_drop
-    
-    if trigger_id == 'grafico1-lluvia' and click1:
-        point = click1['points'][0]
-        if 'y' in point:
-            nuevo_municipio = point['y']
-            filtros['municipio'] = nuevo_municipio
-    
-    elif trigger_id == 'grafico2-lluvia' and click2:
+
+    if trigger_id == 'grafico2-lluvia' and click2:
         point = click2['points'][0]
         if 'color' in point and point.get('color') != 'Sin datos':
             nueva_subregion = point['color']
             filtros['subregion'] = nueva_subregion
-    
-    elif trigger_id == 'dropdown-municipio-lluvia':
-        filtros['municipio'] = municipio_drop
-    
+
     elif trigger_id == 'dropdown-subregion-lluvia':
         filtros['subregion'] = subregion_drop
-    
-    return filtros, nuevo_municipio, nueva_subregion
+
+    return filtros, nueva_subregion
 
 
 @app.callback(
@@ -1075,15 +1041,13 @@ def actualizar_filtros_lluvia(click1, click2, click3, municipio_drop, subregion_
      Input(f'slider-rango-lluvia', 'value')]
 )
 def update_lluvia(store_filtros, slider_value):
-    municipio = store_filtros.get('municipio') if store_filtros else None
     subregion = store_filtros.get('subregion') if store_filtros else None
-    
+
     fig1, fig2, fig3, tabla, total, top, registros = crear_dashboard_figures_mapa(
-        df_lluvia, municipio, subregion, slider_value
+        df_lluvia, None, subregion, slider_value
     )
-    
+
     filtros_parts = []
-    if municipio: filtros_parts.append(f"🏙️ {municipio}")
     if subregion: filtros_parts.append(f"🗺️ {subregion}")
     
     filtros_text = "🔍 Filtros activos: " + (" | ".join(filtros_parts) if filtros_parts else "✅ Sin filtros activos")
@@ -1097,45 +1061,32 @@ def update_lluvia(store_filtros, slider_value):
 
 @app.callback(
     [Output('store-filtros-amenaza', 'data'),
-     Output('dropdown-municipio-amenaza', 'value'),
      Output('dropdown-subregion-amenaza', 'value')],
-    [Input('grafico1-amenaza', 'clickData'),
-     Input('grafico2-amenaza', 'clickData'),
+    [Input('grafico2-amenaza', 'clickData'),
      Input('grafico3-amenaza', 'clickData'),
-     Input('dropdown-municipio-amenaza', 'value'),
      Input('dropdown-subregion-amenaza', 'value')],
     [State('store-filtros-amenaza', 'data')]
 )
-def actualizar_filtros_amenaza(click1, click2, click3, municipio_drop, subregion_drop, store_data):
+def actualizar_filtros_amenaza(click2, click3, subregion_drop, store_data):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return store_data, municipio_drop, subregion_drop
-    
+        return store_data, subregion_drop
+
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    filtros = store_data.copy() if store_data else {'municipio': None, 'subregion': None}
-    nuevo_municipio = municipio_drop
+
+    filtros = store_data.copy() if store_data else {'subregion': None}
     nueva_subregion = subregion_drop
-    
-    if trigger_id == 'grafico1-amenaza' and click1:
-        point = click1['points'][0]
-        if 'y' in point:
-            nuevo_municipio = point['y']
-            filtros['municipio'] = nuevo_municipio
-    
-    elif trigger_id == 'grafico2-amenaza' and click2:
+
+    if trigger_id == 'grafico2-amenaza' and click2:
         point = click2['points'][0]
         if 'color' in point and point.get('color') != 'Sin datos':
             nueva_subregion = point['color']
             filtros['subregion'] = nueva_subregion
-    
-    elif trigger_id == 'dropdown-municipio-amenaza':
-        filtros['municipio'] = municipio_drop
-    
+
     elif trigger_id == 'dropdown-subregion-amenaza':
         filtros['subregion'] = subregion_drop
-    
-    return filtros, nuevo_municipio, nueva_subregion
+
+    return filtros, nueva_subregion
 
 
 @app.callback(
@@ -1179,19 +1130,17 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
         fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
         return fig_vacio, fig_mapa, fig_mes, html.Div("No hay datos"), "0 registros", "✅ Sin filtros", "0", "N/A"
     
-    municipio = store_filtros.get('municipio') if store_filtros else None
     subregion = store_filtros.get('subregion') if store_filtros else None
-    
+
     fig1, fig2, fig3, tabla, total, top, registros = crear_dashboard_figures_mapa(
-        df_grupo, municipio, subregion, slider_value
+        df_grupo, None, subregion, slider_value
     )
-    
+
     filtros_parts = []
-    if municipio: filtros_parts.append(f"🏙️ {municipio}")
     if subregion: filtros_parts.append(f"🗺️ {subregion}")
-    
+
     filtros_text = "🔍 Filtros activos: " + (" | ".join(filtros_parts) if filtros_parts else "✅ Sin filtros activos")
-    
+
     return fig1, fig2, fig3, tabla, f"📌 {total:,} registros totales | {registros:,} en tabla", filtros_text, f"{total:,}", top
 
 
