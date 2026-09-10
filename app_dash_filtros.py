@@ -365,19 +365,26 @@ def crear_dashboard_figures_enso(df, subregion_seleccionada=None, slider_value=N
 
     tabla_mensual = _tabla_mensual_enso(df_filtrado)
 
-    # Gráfico 1: barras por fase ENSO + línea de total mensual de emergencias
+    # Gráfico 1: barras por fase ENSO (banda de fondo a todo lo alto del eje)
+    # + línea de total mensual de emergencias por encima
     if len(tabla_mensual) > 0:
+        techo = max(tabla_mensual['Total Emergencias'].max(), 1)
+        tabla_mensual['_altura_barra'] = techo
+
         fig1 = px.bar(
-            tabla_mensual, x='Fecha_Mes', y='Total Emergencias', color='ENSO_RONI',
+            tabla_mensual, x='Fecha_Mes', y='_altura_barra', color='ENSO_RONI',
             color_discrete_map=ENSO_COLORS, category_orders={'ENSO_RONI': ENSO_ORDEN},
+            hover_data={'_altura_barra': False, 'Total Emergencias': True},
         )
+        fig1.update_traces(opacity=0.75)
         fig1.add_trace(go.Scatter(
             x=tabla_mensual['Fecha_Mes'], y=tabla_mensual['Total Emergencias'],
             mode='lines', name='Total Emergencias Lluvia', line=dict(color='black', width=2)
         ))
         fig1.update_xaxes(tickformat='%b %Y', dtick='M6', tickangle=-45)
+        fig1.update_yaxes(range=[0, techo])
         fig1.update_layout(
-            height=350, margin=dict(l=0, r=0, t=30, b=0),
+            height=350, margin=dict(l=0, r=0, t=30, b=0), bargap=0,
             legend_title_text='ENSO', yaxis_title='Total emergencias por lluvia'
         )
     else:
