@@ -435,6 +435,83 @@ def crear_dashboard_figures_enso(df, subregion_seleccionada=None, slider_value=N
     return fig1, fig2, fig3, len(df_filtrado)
 
 # ============================================
+# CICLO ANUAL DE PRECIPITACIÓN (GPM) POR SUBREGIÓN
+# ============================================
+def cargar_ciclo_precipitacion():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    ruta = os.path.join(base_dir, 'ciclo_anual_subregiones.txt')
+    return pd.read_csv(ruta, sep='\t')
+
+df_precipitacion = cargar_ciclo_precipitacion()
+
+# Urabá se reporta en el GPM dividido en dos climatologías distintas: Atrato
+# (cuenca del Atrato, mucho más lluviosa) y Urabá Norte (el resto). Estos son
+# los únicos dos municipios de la subregión Urabá que caen en la cuenca del Atrato.
+ATRATO_MUNICIPIOS = {'Murindó', 'Vigía del Fuerte'}
+_ATRATO_CLAVES = {_clave_normalizada(m) for m in ATRATO_MUNICIPIOS}
+
+# Orden y nombre de despliegue de cada subregión del ciclo de precipitación
+# (coincide con las etiquetas del archivo ciclo_anual_subregiones.txt)
+SUBREGIONES_PRECIP_ORDEN = [
+    'BAJO CAUCA', 'URABÁ NORTE', 'NORTE', 'NORDESTE', 'OCCIDENTE',
+    'VALLE DE ABURRÁ', 'ORIENTE', 'ATRATO', 'SUROESTE', 'MAGDALENA MEDIO',
+]
+SUBREGIONES_PRECIP_NOMBRE = {
+    'BAJO CAUCA': 'Bajo Cauca', 'URABÁ NORTE': 'Urabá Norte', 'NORTE': 'Norte',
+    'NORDESTE': 'Nordeste', 'OCCIDENTE': 'Occidente', 'VALLE DE ABURRÁ': 'Valle de Aburrá',
+    'ORIENTE': 'Oriente', 'ATRATO': 'Atrato', 'SUROESTE': 'Suroeste', 'MAGDALENA MEDIO': 'Magdalena Medio',
+}
+SUBREGIONES_PRECIP_COLORES = dict(zip(SUBREGIONES_PRECIP_ORDEN, px.colors.qualitative.D3 + px.colors.qualitative.Set1[:len(SUBREGIONES_PRECIP_ORDEN) - 10]))
+
+def subregion_precipitacion(municipio, subregion_principal):
+    """Traduce la Subregión del dato de emergencias a la etiqueta de subregión
+    del ciclo de precipitación GPM, separando Urabá en Urabá Norte / Atrato."""
+    if pd.isna(subregion_principal):
+        return None
+    if _clave_normalizada(municipio) in _ATRATO_CLAVES:
+        return 'ATRATO'
+    if _clave_normalizada(subregion_principal) == _clave_normalizada('Urabá'):
+        return 'URABÁ NORTE'
+    return str(subregion_principal).strip().upper()
+
+# Municipio -> subregión de precipitación, precalculado para todos los
+# municipios presentes en el histórico de emergencias.
+MUNICIPIO_SUBREGION_PRECIP = {
+    fila['Municipio']: subregion_precipitacion(fila['Municipio'], fila['Subregión'])
+    for _, fila in df_emergencias[['Municipio', 'Subregión']].dropna().drop_duplicates().iterrows()
+}
+
+def crear_grafico_ciclo_precipitacion(municipio_seleccionado=None):
+    """Ciclo anual de precipitación (GPM) por subregión. Si se selecciona un
+    municipio, se resalta únicamente la línea de su subregión (no filtra: se
+    siguen mostrando las 10 subregiones para dar contexto)."""
+    subregion_resaltada = MUNICIPIO_SUBREGION_PRECIP.get(municipio_seleccionado) if municipio_seleccionado else None
+
+    fig = go.Figure()
+    for subregion in SUBREGIONES_PRECIP_ORDEN:
+        datos = df_precipitacion[df_precipitacion['subregion'] == subregion].sort_values('mes')
+        resaltar = subregion == subregion_resaltada
+        atenuar = subregion_resaltada is not None and not resaltar
+        fig.add_trace(go.Scatter(
+            x=datos['mes'].map(MESES_ABREV), y=datos['precipitacion_mm'],
+            mode='lines', name=SUBREGIONES_PRECIP_NOMBRE[subregion],
+            line=dict(color=SUBREGIONES_PRECIP_COLORES[subregion], width=4 if resaltar else 1.75),
+            opacity=0.25 if atenuar else 1.0,
+        ))
+
+    fig.update_layout(
+        height=350, margin=dict(l=0, r=0, t=30 if subregion_resaltada else 10, b=0),
+        xaxis=dict(categoryorder='array', categoryarray=list(MESES_ABREV.values()), title='Mes'),
+        yaxis_title='Precipitación media (mm)',
+        legend_title_text='Subregión',
+    )
+    if subregion_resaltada:
+        fig.update_layout(title=dict(
+            text=f"Resaltado: {SUBREGIONES_PRECIP_NOMBRE[subregion_resaltada]}", font=dict(size=13)
+        ))
+    return fig
+
+# ============================================
 # INICIALIZAR APP
 # ============================================
 app = dash.Dash(
@@ -719,9 +796,14 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
     
     # Obtener listas únicas para filtros
     subregiones_unicas = sorted(df['Subregión'].dropna().unique())
+    municipios_unicos = sorted(df['Municipio'].dropna().unique())
 
     # Para la página 1, los filtros son solo municipio y subregión
     mostrar_amenaza = (tipo == 'original' and pagina == 'todas')
+    # En Lluvia y Amenazas Secundarias se ofrece un selector de Municipio, pero
+    # es solo un SELECTOR para el ciclo de precipitación (Gráfico 4): no filtra
+    # "Top municipios con más emergencias" ni ningún otro gráfico de la página.
+    mostrar_selector_precip = (tipo == 'mapa')
 
     return html.Div([
         html.H1(titulo, className='page-title'),
@@ -738,7 +820,17 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
                     placeholder="Selecciona una subregión..."
                 )
             ], className='filter-item'),
-            
+
+            *([html.Div([
+                html.Label("🏙️ Municipio (ciclo de precipitación):"),
+                dcc.Dropdown(
+                    id=f'dropdown-municipio-precip-{pagina}',
+                    options=[{'label': 'Ninguno', 'value': None}] + [{'label': m, 'value': m} for m in municipios_unicos],
+                    value=None,
+                    placeholder="Selecciona un municipio..."
+                )
+            ], className='filter-item')] if mostrar_selector_precip else []),
+
             html.Div([
                 html.Label("📊 Rango de Años:"),
                 html.Div([
@@ -785,7 +877,11 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
                 html.Div([
                     html.H4("📊 " + ("Emergencias por tipo de Amenaza" if tipo == 'original' else "Emergencias por mes del año")),
                     dcc.Graph(id=f'grafico3-{pagina}', config={'displayModeBar': False})
-                ], className='chart-card')
+                ], className='chart-card'),
+                *([html.Div([
+                    html.H4("🌧️ Ciclo anual de precipitación (GPM)"),
+                    dcc.Graph(id=f'grafico4-{pagina}', config={'displayModeBar': False})
+                ], className='chart-card')] if mostrar_selector_precip else [])
             ], className='charts-column'),
             html.Div([
                 html.H4("📅 Total Emergencias por Año"),
@@ -1149,6 +1245,27 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     filtros_text = "🔍 Filtros activos: " + (" | ".join(filtros_parts) if filtros_parts else "✅ Sin filtros activos")
 
     return fig1, fig2, fig3, tabla, f"📌 {total:,} registros totales | {registros:,} en tabla", filtros_text, f"{total:,}", top
+
+
+# ============================================
+# CALLBACKS - CICLO ANUAL DE PRECIPITACIÓN (Lluvia y Amenazas)
+# El selector de Municipio aquí NO filtra ningún otro gráfico de la página;
+# solo determina qué subregión resaltar en el ciclo de precipitación.
+# ============================================
+@app.callback(
+    Output('grafico4-lluvia', 'figure'),
+    Input('dropdown-municipio-precip-lluvia', 'value')
+)
+def update_precipitacion_lluvia(municipio):
+    return crear_grafico_ciclo_precipitacion(municipio)
+
+
+@app.callback(
+    Output('grafico4-amenaza', 'figure'),
+    Input('dropdown-municipio-precip-amenaza', 'value')
+)
+def update_precipitacion_amenaza(municipio):
+    return crear_grafico_ciclo_precipitacion(municipio)
 
 
 # ============================================
