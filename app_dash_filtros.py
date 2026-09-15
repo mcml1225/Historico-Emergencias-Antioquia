@@ -481,29 +481,50 @@ MUNICIPIO_SUBREGION_PRECIP = {
     for _, fila in df_emergencias[['Municipio', 'Subregión']].dropna().drop_duplicates().iterrows()
 }
 
-def crear_grafico_ciclo_precipitacion(municipio_seleccionado=None):
-    """Ciclo anual de precipitación (GPM) por subregión. Si se selecciona un
-    municipio, se resalta únicamente la línea de su subregión (no filtra: se
-    siguen mostrando las 10 subregiones para dar contexto)."""
-    subregion_resaltada = MUNICIPIO_SUBREGION_PRECIP.get(municipio_seleccionado) if municipio_seleccionado else None
+def crear_grafico_emergencias_precipitacion(df_filtrado, municipio_seleccionado=None, subregion_seleccionada=None):
+    """Emergencias por mes (barras, eje izquierdo) superpuestas con el ciclo
+    anual de precipitación GPM por subregión (líneas, eje derecho). Si se
+    selecciona un municipio o una subregión, se muestra ÚNICAMENTE la línea
+    de precipitación de esa subregión (el municipio tiene prioridad si ambos
+    filtros están activos); sin ningún filtro se muestran las 10 subregiones."""
+    if 'Mes' in df_filtrado.columns and len(df_filtrado) > 0:
+        df_mes = df_filtrado.groupby('Mes').size().reset_index()
+        df_mes.columns = ['Mes', 'Total Emergencias']
+        meses_completos = pd.DataFrame({'Mes': range(1, 13)})
+        df_mes = meses_completos.merge(df_mes, on='Mes', how='left').fillna(0)
+    else:
+        df_mes = pd.DataFrame({'Mes': range(1, 13), 'Total Emergencias': [0] * 12})
+
+    subregion_resaltada = (
+        MUNICIPIO_SUBREGION_PRECIP.get(municipio_seleccionado) if municipio_seleccionado
+        else subregion_precipitacion(None, subregion_seleccionada) if subregion_seleccionada
+        else None
+    )
+    subregiones_a_mostrar = [subregion_resaltada] if subregion_resaltada else SUBREGIONES_PRECIP_ORDEN
 
     fig = go.Figure()
-    for subregion in SUBREGIONES_PRECIP_ORDEN:
+
+    fig.add_trace(go.Bar(
+        x=df_mes['Mes'].map(MESES_ABREV), y=df_mes['Total Emergencias'],
+        name='Total Emergencias', marker_color='#2E86C1', opacity=0.5,
+        yaxis='y1',
+    ))
+
+    for subregion in subregiones_a_mostrar:
         datos = df_precipitacion[df_precipitacion['subregion'] == subregion].sort_values('mes')
-        resaltar = subregion == subregion_resaltada
-        atenuar = subregion_resaltada is not None and not resaltar
         fig.add_trace(go.Scatter(
             x=datos['mes'].map(MESES_ABREV), y=datos['precipitacion_mm'],
             mode='lines', name=SUBREGIONES_PRECIP_NOMBRE[subregion],
-            line=dict(color=SUBREGIONES_PRECIP_COLORES[subregion], width=4 if resaltar else 1.75),
-            opacity=0.25 if atenuar else 1.0,
+            line=dict(color=SUBREGIONES_PRECIP_COLORES[subregion], width=4 if subregion_resaltada else 1.75),
+            yaxis='y2',
         ))
 
     fig.update_layout(
-        height=350, margin=dict(l=0, r=0, t=30 if subregion_resaltada else 10, b=0),
+        height=380, margin=dict(l=0, r=0, t=30 if subregion_resaltada else 10, b=0),
         xaxis=dict(categoryorder='array', categoryarray=list(MESES_ABREV.values()), title='Mes'),
-        yaxis_title='Precipitación media (mm)',
-        legend_title_text='Subregión',
+        yaxis=dict(title='Total Emergencias', rangemode='tozero'),
+        yaxis2=dict(title='Precipitación media (mm)', overlaying='y', side='right', rangemode='tozero', showgrid=False),
+        legend_title_text='Serie',
     )
     if subregion_resaltada:
         fig.update_layout(title=dict(
@@ -657,8 +678,8 @@ def crear_dashboard_figures_original(df, municipio_seleccionado=None, subregion_
     return fig1, fig2, fig3, tabla_html, total, municipio_top, len(df_tabla)
 
 
-def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_seleccionada=None, 
-                                 slider_value=None):
+def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_seleccionada=None,
+                                 slider_value=None, municipio_precip=None):
     """Versión con mapa y líneas (Páginas 2 y 3) - CON FILTROS INTERACTIVOS"""
     df_base = df.copy()
     df_filtrado = df_base.copy()
@@ -723,35 +744,8 @@ def crear_dashboard_figures_mapa(df, municipio_seleccionado=None, subregion_sele
         )
         fig2.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
     
-    # Gráfico 3: LÍNEAS POR MES
-    if 'Mes' in df_filtrado.columns and len(df_filtrado) > 0:
-        df_mes = df_filtrado.groupby('Mes').size().reset_index()
-        df_mes.columns = ['Mes', 'Total Emergencias']
-        meses_completos = pd.DataFrame({'Mes': range(1, 13)})
-        df_mes = meses_completos.merge(df_mes, on='Mes', how='left').fillna(0)
-        
-        fig3 = px.line(
-            df_mes, x='Mes', y='Total Emergencias',
-            markers=True, text='Total Emergencias',
-        )
-        fig3.update_traces(
-            textposition='top center',
-            line=dict(color='#2E86C1', width=3),
-            marker=dict(size=10, color='#2E86C1'),
-            textfont=dict(size=12, color='#2E86C1')
-        )
-        fig3.update_layout(
-            height=300, margin=dict(l=0, r=0, t=30, b=0),
-            xaxis=dict(tickmode='linear', tick0=1, dtick=1, range=[0.5, 12.5]),
-            yaxis=dict(title='Total Emergencias')
-        )
-    else:
-        fig3 = px.line(
-            pd.DataFrame({'Mes': range(1, 13), 'Total Emergencias': [0]*12}),
-            x='Mes', y='Total Emergencias', markers=True, text='Total Emergencias',
-        )
-        fig3.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
-        fig3.update_traces(textposition='top center')
+    # Gráfico 3: EMERGENCIAS POR MES + CICLO ANUAL DE PRECIPITACIÓN (doble eje)
+    fig3 = crear_grafico_emergencias_precipitacion(df_filtrado, municipio_precip, subregion_seleccionada)
     
     # Tabla de años
     df_tabla = df_filtrado.copy()
@@ -875,13 +869,9 @@ def crear_layout_pagina(titulo, subtitulo, df, pagina, tipo):
                     dcc.Graph(id=f'grafico2-{pagina}', config={'displayModeBar': False})
                 ], className='chart-card'),
                 html.Div([
-                    html.H4("📊 " + ("Emergencias por tipo de Amenaza" if tipo == 'original' else "Emergencias por mes del año")),
+                    html.H4("📊 " + ("Emergencias por tipo de Amenaza" if tipo == 'original' else "Emergencias por mes y ciclo de precipitación (GPM)")),
                     dcc.Graph(id=f'grafico3-{pagina}', config={'displayModeBar': False})
-                ], className='chart-card'),
-                *([html.Div([
-                    html.H4("🌧️ Ciclo anual de precipitación (GPM)"),
-                    dcc.Graph(id=f'grafico4-{pagina}', config={'displayModeBar': False})
-                ], className='chart-card')] if mostrar_selector_precip else [])
+                ], className='chart-card')
             ], className='charts-column'),
             html.Div([
                 html.H4("📅 Total Emergencias por Año"),
@@ -1141,13 +1131,14 @@ def actualizar_filtros_lluvia(click2, click3, subregion_drop, store_data):
      Output(f'total-lluvia', 'children'),
      Output(f'municipio-lluvia', 'children')],
     [Input('store-filtros-lluvia', 'data'),
-     Input(f'slider-rango-lluvia', 'value')]
+     Input(f'slider-rango-lluvia', 'value'),
+     Input('dropdown-municipio-precip-lluvia', 'value')]
 )
-def update_lluvia(store_filtros, slider_value):
+def update_lluvia(store_filtros, slider_value, municipio_precip):
     subregion = store_filtros.get('subregion') if store_filtros else None
 
     fig1, fig2, fig3, tabla, total, top, registros = crear_dashboard_figures_mapa(
-        df_lluvia, None, subregion, slider_value
+        df_lluvia, None, subregion, slider_value, municipio_precip
     )
 
     filtros_parts = []
@@ -1203,9 +1194,10 @@ def actualizar_filtros_amenaza(click2, click3, subregion_drop, store_data):
      Output(f'municipio-amenaza', 'children')],
     [Input('store-filtros-amenaza', 'data'),
      Input(f'slider-rango-amenaza', 'value'),
-     Input('dropdown-grupo-amenaza', 'value')]
+     Input('dropdown-grupo-amenaza', 'value'),
+     Input('dropdown-municipio-precip-amenaza', 'value')]
 )
-def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
+def update_amenaza(store_filtros, slider_value, grupo_seleccionado, municipio_precip):
     if not grupo_seleccionado:
         fig_vacio = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), y='x', x='y')
         fig_vacio.update_layout(height=350, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
@@ -1215,10 +1207,10 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
             map_style="open-street-map",
         )
         fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
-        fig_mes = px.line(pd.DataFrame({'Mes': range(1, 13), 'Total': [0]*12}), x='Mes', y='Total')
-        fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
+        subregion = store_filtros.get('subregion') if store_filtros else None
+        fig_mes = crear_grafico_emergencias_precipitacion(pd.DataFrame({'Mes': []}), municipio_precip, subregion)
         return fig_vacio, fig_mapa, fig_mes, html.Div("Selecciona un grupo"), "0 registros", "✅ Sin filtros", "0", "N/A"
-    
+
     df_grupo = df_por_grupo.get(grupo_seleccionado, pd.DataFrame())
     if len(df_grupo) == 0:
         fig_vacio = px.bar(pd.DataFrame({'x': ['Sin datos'], 'y': [0]}), y='x', x='y')
@@ -1229,14 +1221,14 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
             map_style="open-street-map",
         )
         fig_mapa.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
-        fig_mes = px.line(pd.DataFrame({'Mes': range(1, 13), 'Total': [0]*12}), x='Mes', y='Total')
-        fig_mes.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
+        subregion = store_filtros.get('subregion') if store_filtros else None
+        fig_mes = crear_grafico_emergencias_precipitacion(pd.DataFrame({'Mes': []}), municipio_precip, subregion)
         return fig_vacio, fig_mapa, fig_mes, html.Div("No hay datos"), "0 registros", "✅ Sin filtros", "0", "N/A"
-    
+
     subregion = store_filtros.get('subregion') if store_filtros else None
 
     fig1, fig2, fig3, tabla, total, top, registros = crear_dashboard_figures_mapa(
-        df_grupo, None, subregion, slider_value
+        df_grupo, None, subregion, slider_value, municipio_precip
     )
 
     filtros_parts = []
@@ -1245,27 +1237,6 @@ def update_amenaza(store_filtros, slider_value, grupo_seleccionado):
     filtros_text = "🔍 Filtros activos: " + (" | ".join(filtros_parts) if filtros_parts else "✅ Sin filtros activos")
 
     return fig1, fig2, fig3, tabla, f"📌 {total:,} registros totales | {registros:,} en tabla", filtros_text, f"{total:,}", top
-
-
-# ============================================
-# CALLBACKS - CICLO ANUAL DE PRECIPITACIÓN (Lluvia y Amenazas)
-# El selector de Municipio aquí NO filtra ningún otro gráfico de la página;
-# solo determina qué subregión resaltar en el ciclo de precipitación.
-# ============================================
-@app.callback(
-    Output('grafico4-lluvia', 'figure'),
-    Input('dropdown-municipio-precip-lluvia', 'value')
-)
-def update_precipitacion_lluvia(municipio):
-    return crear_grafico_ciclo_precipitacion(municipio)
-
-
-@app.callback(
-    Output('grafico4-amenaza', 'figure'),
-    Input('dropdown-municipio-precip-amenaza', 'value')
-)
-def update_precipitacion_amenaza(municipio):
-    return crear_grafico_ciclo_precipitacion(municipio)
 
 
 # ============================================
